@@ -75,6 +75,19 @@ Python 3.6にて導入されたf-stringsは賢いので、`\N{name}`と混在し
 
 そんなバカなと思うかもしれないが以外にもハマるという声がある。
 
+## ループ中でリストの要素を変更せず、データを生成するほうがよい
+
+```python
+# Just okay
+for i, x in enumerate(data):
+    data[i] *= factor
+
+# Better
+scaled_data = [x * factor for x in data]
+```
+
+ループ中で副作用のあるコードはデータの変更を追跡しづらいため、下のようにしたほうがよい。
+
 ## ディクショナリ
 
 ### ディクショナリの要素を文字列中に楽に展開する
