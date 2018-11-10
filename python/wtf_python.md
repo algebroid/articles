@@ -1,4 +1,4 @@
-> この記事はwtfPythonの翻訳ですが、最新のものに追従していません。
+> この記事はwtfPythonの翻訳ですが、最新の内容に追従していません。
 >
 > [satwikkansal/wtfPython: A collection of subtle and tricky Python examples](https://github.com/satwikkansal/wtfPython)
 
