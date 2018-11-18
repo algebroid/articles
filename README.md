@@ -1,4 +1,4 @@
-# プログラミング関係の文書集（翻訳多し）
+# プログラミング関係の文書集
 
 ## Python
 
@@ -8,4 +8,4 @@
 
 ## Haskell
 
-[（翻訳中）Profunctor Opticsについて](haskell/profunctor_is_easy.md)
+[（読解中）Profunctor Opticsについて](haskell/profunctor_is_easy.md)
