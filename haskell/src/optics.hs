@@ -20,3 +20,9 @@ shift :: Adapter ((a, b), c) ((a', b'), c') (a, (b, c)) (a', (b', c'))
 shift = Adapter f t where
     f ((a, b), c) = (a, (b, c))
     t (a', (b', c')) = ((a', b'), c')
+
+data Prism s t a b = Prism { match :: s -> Either a t
+                           , build :: b -> t }
+
+the :: Prism (Maybe a) (Maybe b) a b
+the = Prism (maybe (Right Nothing) Left) Just

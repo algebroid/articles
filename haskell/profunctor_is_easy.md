@@ -119,11 +119,52 @@ shift = Adapter f t where
     t (a', (b', c')) = ((a', b'), c')
 ```
 
-次のコード片は簡単な `shift`の利用例である。
+次のコード片は単純な`shift`の利用例である。
 
 ```haskell
 λ> from shift ((1, "hi"), True)
 (1,("hi",True))
 λ> to shift (True, ("hi", 1))
 ((True,"hi"),1)
+```
+
+## Prism
+
+`Prism`は、全体の値を与えられた焦点から再構成できるにも関わらず、焦点の値が利用できない可能性があるとき現れる。代数的データ構造に慣れ親しんでいる読者は、Lensが直積型でPrismが直話型であると言えば分かるだろう。Prismは以下のように表現される：
+
+```haskell
+data Prism s t a b = Prism { match :: s -> Either a t
+                           , build :: b -> t }
+```
+
+Prismは`match`と`build`という2つの演算を持つ。`match`は全体の値から焦点の値（最終的な値は`t`）を抽出することを試みる。一方、`build`は与えられた焦点から全体の値をいつでも再構築できる。ここでもPrismが満たすべき法則が存在するので示す。
+
+```haskell
+matchBuild :: Eq s => Prism s s a a -> s -> Bool
+matchBuild (Prism m b) s = either b id (m s) == s
+
+buildMatch :: (Eq a, Eq s) => Prism s s a a -> a -> Bool
+buildMatch (Prism m b) a = m (b a) == Left a
+```
+
+これは`match`と`build`の間に一貫性がなければならないことを表明している。ある焦点をviewすることができるなら、それをbuildすると元の構造を手に入れることができる。また任意の焦点から全体をbuildすることができるなら、データ全体は焦点を含んでいなければならない。
+
+よくあるprismの例として`the`がある。これは`Maybe`型の裏に隠れている値に焦点を当てることができる。
+
+```haskell
+the :: Prism (Maybe a) (Maybe b) a b
+the = Prism (maybe (Right Nothing) Left) Just
+```
+
+さて、ここで常に`Maybe`の値から焦点を得ることができるとは限らないことに気づかれたと思う。しかしながら焦点があれば単に`Just`を用いて`Maybe`全体を構築できる：
+
+```haskell
+λ> match the (Just 1)
+Left 1
+λ> match the Nothing
+Right Nothing
+λ> build the 1
+Just 1
+λ> build the "hi"
+Just "hi"
 ```
