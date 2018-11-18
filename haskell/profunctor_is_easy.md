@@ -2,11 +2,11 @@
 
 > source: [Don't Fear the Profunctor Optics](https://github.com/hablapps/DontFearTheProfunctorOptics)
 
-Opticsとは、レコードのフィールド、共用体のヴァリアント、コンテナの要素といった、あるデータ構造の構成要素を読み書きするためのアクセサの総称である。ここではOpticsの具体例としてLensを取り上げる。
+Opticsとは、レコードのフィールド、共用体のヴァリアント、コンテナの要素といった、あるデータ構造の構成要素を読み書きするためのアクセサの総称である。ここではOpticsの具体例としてLens, Adapter, Prism, Afiineを取り上げる。
 
 ## Lens
 
-雑に言うと、Lensはあるデータ全体になんらかの焦点(focus)を絞ってアクセスするためのデータ構造である。ここでの「アクセスする」ということはどういうことかというと、ある与えられたデータ全体の焦点に対してviewとupdateができるということである。以下では全体を`s`，焦点を`a`としてviewとupdateを定義する。
+雑に言うと、Lensはあるデータ全体になんらかの焦点(focus)を絞ってアクセスするためのデータ構造である。ここでの「アクセスする」ということはどういうことかというと、ある与えられたデータ全体の焦点に対してviewとupdateができるということである。以下ではデータ全体を`s`，焦点を`a`としてviewとupdateを定義する。
 
 ```haskell
 data Lens s a = Lens { view   :: s -> a
@@ -89,3 +89,41 @@ updateUpdate (Lens v u) a1 a2 s = u (a2, (u (a1, s))) == u (a2, s)
 
 とはいえ、このopticsの合成はぎこちないものである。なぜかというと、別の種類のopticsを合成しようとしたときに、また別の合成関数を定義する必要があるからだ。ライブラリごとの具体的な型について定義を考えると冗長の極みとなる。ライブラリのユーザーは、その合成関数についても深い知識を持たなければ使うことができなくなるだろう。これはのちに述べるprofunctor opticsによって解決される。
 
+## Adapter
+
+次のopticの具体例はAdapterである。名前から示唆されるが、このopticはなんらかの値を適合させることができる。特に、Adapterはデータ全体の値を焦点の値に適合させることができ、逆に焦点の値をデータ全体の値に適合させることもできる。実際には、このopticはデータ全体の値と焦点の値が同じ情報を持っていることを明らかにしている。多態的なAdapterの表現は次のように書ける。
+
+```haskell
+data Adapter s t a b = Adapter { from :: s -> a
+                               , to   :: b -> t }
+```
+
+Adapterは次の法則を満たす。
+
+```haskell
+fromTo :: Eq s => Adapter s s a a -> s -> Bool
+fromTo (Adapter f t) s = (t . f) s == s
+
+toFrom :: Eq a => Adapter s s a a -> a -> Bool
+toFrom (Adapter f t) a = (f . t) a == a
+```
+
+基本的に、このopticは同型写像として振る舞うことを要求している。
+
+Adapterの例としてここでは`shift`を実装してみる。これはタプルの結合性を変更しても、タプルの情報が失われないということを示している。
+
+```haskell
+shift :: Adapter ((a, b), c) ((a', b'), c') (a, (b, c)) (a', (b', c'))
+shift = Adapter f t where
+    f ((a, b), c) = (a, (b, c))
+    t (a', (b', c')) = ((a', b'), c')
+```
+
+次のコード片は簡単な `shift`の利用例である。
+
+```haskell
+λ> from shift ((1, "hi"), True)
+(1,("hi",True))
+λ> to shift (True, ("hi", 1))
+((True,"hi"),1)
+```
