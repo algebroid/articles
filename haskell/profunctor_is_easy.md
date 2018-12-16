@@ -2,7 +2,7 @@
 
 > source: [Don't Fear the Profunctor Optics](https://github.com/hablapps/DontFearTheProfunctorOptics)
 
-Opticsとは、レコードのフィールド、共用体のヴァリアント、コンテナの要素といった、あるデータ構造の構成要素を読み書きするためのアクセサの総称である。ここではOpticsの具体例としてLens, Adapter, Prism, Afiineを取り上げる。
+Opticsとは、レコードのフィールド、共用体のヴァリアント、コンテナの要素といった、あるデータ構造の構成要素を読み書きするためのアクセサの総称である。ここではOpticsの具体例としてLens, Adapter, Prism, Affineを取り上げる。
 
 ## Lens
 
@@ -168,3 +168,51 @@ Just 1
 λ> build the "hi"
 Just "hi"
 ```
+
+## Affine
+
+Affineはあまり知られていない、lensとprismの中間に属するopticsである。これは[`Affine`](http://oleg.fi/gists/posts/2017-03-20-affine-traversal.html)または[`Optional`](http://julien-truffaut.github.io/Monocle/optics/optional.html)として知られている。lensのように、このopticsは与えられた焦点の値から全体の値を構築でき、しかしprismと違い、文脈情報を必要とする。Haskellでは、このopticsは以下のように書き下される：
+
+```haskell
+data Affine s t a b = Affine { preview :: s -> Either a t
+                             , set     :: (b, s) -> t }
+```
+
+Affineは2つのメソッド`preview`と`set`を備えている。お気付きかも知れないが、これらのopticsはprismの`match`とlensの`update`から借りている。これらのメソッドの背後にある直観は、(lensやprismに)対応するものの背後にあるものと同じである。affineの則を示す：
+
+```haskell
+previewSet :: Eq s => Affine s s a a -> s -> Bool
+previewSet (Affine p st) s = either (\a -> st (a, s)) id (p s) == s
+
+setPreview :: (Eq a, Eq s) => Affine s s a a -> a -> s -> Bool
+setPreview (Affine p st) a s = p (st (a, s)) == either (Left . const a) Right (p s)
+
+setSet :: Eq s => Affine s s a a -> a -> a -> s -> Bool
+setSet (Affine p st) a1 a2 s = st (a2, (st (a1, s))) == st (a2, s)
+```
+
+この則の直観はprismの背後にあるものと非常によく似ているが、重要な違いが一つある。値をセットしたとき、`preview`は必ずしもその値を返す必要はないが、しかしセットされた時のために、値は間違いなくセットされたものになる。実際には`set`は焦点の値を含む場合のみに全体の構造を更新する。
+
+以下にaffineの利用例を示す。これは`(Maybe a, c)`の`a`にアクセスする例である:
+
+```haskell
+maybeFirst :: Affine (Maybe a, c) (Maybe b, c) a b
+maybeFirst = Affine p st where
+  p (ma, c) = maybe (Right (Nothing, c)) Left ma
+  st (b, (ma, c)) = (ma $> b, c)
+```
+
+このデータ構造の背後には常に`a`が隠れているわけではない。一方、単に`b`だけから全体値`(Maybe b, c)`を構築することもできない。実際に構築するには、`c`を必要とする。それに加えて、affine則は全体値の中に焦点値が存在しないとき値を更新することができない。 したがって、我々は完全な`(Maybe b, c)`を文脈情報として必要とする。次に、このopticsの実行の仕方を見る：
+
+```haskell
+λ> preview maybeFirst (Just 1, "hi")
+Left 1
+λ> preview maybeFirst (Nothing, "hi")
+Right (Nothing,"hi")
+λ> set maybeFirst ('a', (Just 1, "hi"))
+(Just 'a',"hi")
+λ> set maybeFirst ('a', (Nothing, "hi"))
+(Nothing,"hi")
+```
+
+ここでは教育的な理由から`maybeFirst`をモノリシックなやり方で実装したが、この例はどうも`π1`と`the`が結合しているようだということに気づかれたかも知れない。その直観は実際に良いものであり、opticsの合成の詳細を語る別のパートで再考する。
